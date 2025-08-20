@@ -1,0 +1,68 @@
+name: CI — PHP / WP plugin checks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: [ '8.0', '8.1', '8.2' ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v4
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, intl, xml, curl, zip, gd, json
+          ini-values: post_max_size=256M, upload_max_filesize=256M
+
+      - name: Validate composer.json (if present)
+        if: exists('composer.json')
+        run: composer validate --no-interaction || true
+
+      - name: Install composer deps
+        if: exists('composer.json')
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Run PHPCS (if installed)
+        if: success() && hash phpcs 2>/dev/null || test -f vendor/bin/phpcs
+        run: |
+          if [ -f vendor/bin/phpcs ]; then
+            vendor/bin/phpcs --standard=PSR12 --extensions=php -n .
+          else
+            echo "phpcs not available, skipping."
+          fi
+
+      - name: Run PHPStan (if installed)
+        if: success() && test -f vendor/bin/phpstan
+        run: vendor/bin/phpstan analyse -l 7 src || true
+
+      - name: Setup WordPress Test Library
+        uses: 10up/setup-wordpress-test-library@v2
+        with:
+          php-version: ${{ matrix.php }}
+        # This action prepares a WP install + PHPUnit test lib for plugin testing.
+      
+      - name: Run PHPUnit (if tests present)
+        run: |
+          if [ -f phpunit.xml ] || [ -f phpunit.xml.dist ]; then
+            vendor/bin/phpunit --configuration phpunit.xml || exit 1
+          else
+            echo "No phpunit config found — skipping tests."
+          fi
+
+      - name: Upload logs & artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-artifacts-${{ matrix.php }}
+          path: |
+            vendor/**/phpstan.log
+            vendor/**/phpcs.cache || true
