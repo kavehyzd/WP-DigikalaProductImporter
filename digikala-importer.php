@@ -76,6 +76,11 @@ class Digikala_Importer_Plugin {
         ?>
         <div class="wrap">
             <h1>وارد کردن محصولات از دیجیکالا</h1>
+            <p> لطفا یک لیست از شناسه محصولات را در فیلد زیر وارد نمایید</p>
+            <ul>
+                <li>در هر سطر یک شناسه محصول را وارد تمایید</li>
+                <li>فقط شناسه عدیی محصول را وارد نمایید (مثال : 1254585)</li>
+            </ul>
             <form method="post" action="">
                 <?php wp_nonce_field( 'digikala_import_nonce', 'digikala_import_nonce_field' ); ?>
                 <textarea name="product_ids" rows="6" style="width:100%;" placeholder="شناسه محصولات را خط به خط وارد کنید..."></textarea>
@@ -103,5 +108,4 @@ class Digikala_Importer_Plugin {
     }
 }
 
-// شروع افزونه
 new Digikala_Importer_Plugin();
